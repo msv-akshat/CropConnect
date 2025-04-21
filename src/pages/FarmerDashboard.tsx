@@ -1,9 +1,8 @@
-
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Filter, Search, Calendar, FileText, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, Timestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { toast } from "sonner";
@@ -24,7 +23,7 @@ interface CropUpdate {
   expectedHarvestDate: string;
   notes: string;
   status: "pending" | "approved" | "rejected";
-  timestamp: Date;
+  timestamp: Timestamp | Date; // Updated to accept both Timestamp and Date
 }
 
 interface User {
@@ -158,6 +157,23 @@ const FarmerDashboard = ({ user }: { user: User }) => {
       update.type.toLowerCase().includes(searchTerm.toLowerCase()) || 
       update.stage.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+  // Helper function to format dates from either Timestamp or Date objects
+  const formatDate = (dateValue: Timestamp | Date | undefined) => {
+    if (!dateValue) return "N/A";
+    
+    // Handle Firebase Timestamp objects
+    if ('toDate' in dateValue) {
+      return dateValue.toDate().toLocaleDateString();
+    }
+    
+    // Handle regular Date objects
+    if (dateValue instanceof Date) {
+      return dateValue.toLocaleDateString();
+    }
+    
+    return "N/A";
+  };
 
   return (
     <div className="min-h-screen bg-[#FFF8E7]">
@@ -354,109 +370,108 @@ const FarmerDashboard = ({ user }: { user: User }) => {
                             </div>
                             <div>
                               <p className="text-gray-600">Expected Harvest: {update.expectedHarvestDate || "N/A"}</p>
-                              <p className="text-gray-600">Submitted: {update.timestamp?.toDate?.().toLocaleDateString() || "N/A"}</p>
-                            </div>
+                              <p className="text-gray-600">Submitted: {formatDate(update.timestamp)}</p>
                           </div>
+                        </div>
 
-                          {update.notes && (
-                            <p className="text-sm bg-gray-50 p-2 rounded mt-2 mb-3">{update.notes}</p>
-                          )}
+                        {update.notes && (
+                          <p className="text-sm bg-gray-50 p-2 rounded mt-2 mb-3">{update.notes}</p>
+                        )}
 
-                          <div className="mt-2">
-                            <p className="text-xs text-gray-500 mb-1">Verification Status</p>
-                            <Progress value={getProgressValue(update.status)} className="h-2" />
-                          </div>
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-500 mb-1">Verification Status</p>
+                          <Progress value={getProgressValue(update.status)} className="h-2" />
+                        </div>
 
-                          <div className="flex justify-end mt-3 gap-2">
-                            <Button variant="outline" size="sm" onClick={() => deleteCropUpdate(update.id)}>
-                              Delete
-                            </Button>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm">View Details</Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Crop Details</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Crop Type</p>
-                                      <p>{update.type}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Growth Stage</p>
-                                      <p>{update.stage}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Quantity</p>
-                                      <p>{update.quantity} acres</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Status</p>
-                                      <p className={getStatusColor(update.status)}>
-                                        {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Planted Date</p>
-                                      <p>{update.plantedDate || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Expected Harvest</p>
-                                      <p>{update.expectedHarvestDate || "N/A"}</p>
-                                    </div>
+                        <div className="flex justify-end mt-3 gap-2">
+                          <Button variant="outline" size="sm" onClick={() => deleteCropUpdate(update.id)}>
+                            Delete
+                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button size="sm">View Details</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Crop Details</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-sm font-medium">Crop Type</p>
+                                    <p>{update.type}</p>
                                   </div>
-                                  {update.notes && (
-                                    <div>
-                                      <p className="text-sm font-medium">Notes</p>
-                                      <p className="bg-gray-50 p-3 rounded">{update.notes}</p>
-                                    </div>
-                                  )}
+                                  <div>
+                                    <p className="text-sm font-medium">Growth Stage</p>
+                                    <p>{update.stage}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Quantity</p>
+                                    <p>{update.quantity} acres</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Status</p>
+                                    <p className={getStatusColor(update.status)}>
+                                      {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Planted Date</p>
+                                    <p>{update.plantedDate || "N/A"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Expected Harvest</p>
+                                    <p>{update.expectedHarvestDate || "N/A"}</p>
+                                  </div>
                                 </div>
-                              </DialogContent>
-                            </Dialog>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="reports">
-            <Card>
-              <CardHeader>
-                <CardTitle>Crop Calendar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>This is where your crop calendar and planting schedule would be displayed.</p>
-                <p className="text-muted-foreground mt-2">Coming soon: Visual timeline of all your crops and their respective growth stages.</p>
+                                {update.notes && (
+                                  <div>
+                                    <p className="text-sm font-medium">Notes</p>
+                                    <p className="bg-gray-50 p-3 rounded">{update.notes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
-          </TabsContent>
-          
-          <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="font-medium">Profile Information</h3>
-                  <p className="text-sm text-gray-600">Name: {user.name}</p>
-                  <p className="text-sm text-gray-600">Email: {user.email}</p>
-                  <p className="text-sm text-gray-600">Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
-                </div>
-                <Button onClick={handleLogout} variant="outline">Logout</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="reports">
+          <Card>
+            <CardHeader>
+              <CardTitle>Crop Calendar</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>This is where your crop calendar and planting schedule would be displayed.</p>
+              <p className="text-muted-foreground mt-2">Coming soon: Visual timeline of all your crops and their respective growth stages.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="font-medium">Profile Information</h3>
+                <p className="text-sm text-gray-600">Name: {user.name}</p>
+                <p className="text-sm text-gray-600">Email: {user.email}</p>
+                <p className="text-sm text-gray-600">Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
+              </div>
+              <Button onClick={handleLogout} variant="outline">Logout</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

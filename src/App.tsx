@@ -17,8 +17,17 @@ import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
+// Define types for our user object
+interface UserData {
+  uid: string;
+  name: string;
+  email: string;
+  role: string;
+  [key: string]: any; // For any additional properties
+}
+
 const App = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,9 +35,18 @@ const App = () => {
       if (currentUser) {
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (userDoc.exists()) {
-          setUser({ ...currentUser, ...userDoc.data() });
+          setUser({ 
+            uid: currentUser.uid, 
+            email: currentUser.email || "", 
+            ...userDoc.data() as Omit<UserData, 'uid' | 'email'> 
+          });
         } else {
-          setUser(currentUser);
+          setUser({ 
+            uid: currentUser.uid, 
+            email: currentUser.email || "",
+            name: currentUser.displayName || "",
+            role: "" 
+          });
         }
       } else {
         setUser(null);
