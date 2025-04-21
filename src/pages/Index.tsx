@@ -1,13 +1,13 @@
 
 import { useState } from 'react';
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useNavigate } from 'react-router-dom';
 import { Home, UserCheck, Shield } from "lucide-react";
 import RoleCard from '@/components/RoleCard';
 import Hero from '@/components/Hero';
 
 const Index = () => {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const roles = [
     {
@@ -32,8 +32,20 @@ const Index = () => {
 
   const handleRoleSelect = (role: string) => {
     setSelectedRole(role);
-    // Will handle navigation/authentication in future implementation
-    console.log(`Selected role: ${role}`);
+    // Navigate to the respective dashboard
+    switch (role.toLowerCase()) {
+      case 'farmer':
+        navigate('/farmer');
+        break;
+      case 'employee':
+        navigate('/employee');
+        break;
+      case 'admin':
+        navigate('/admin');
+        break;
+      default:
+        break;
+    }
   };
 
   return (
