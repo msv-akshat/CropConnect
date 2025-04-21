@@ -1,0 +1,54 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Basic function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Function to check if the user is a specific role
+    function hasRole(role) {
+      return isAuthenticated() 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    // Function to check if the user is the owner of a document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Users can read and write only their own document
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+      
+      // Admin can read and write all user documents
+      allow read, write: if hasRole("admin");
+    }
+    
+    // Crop updates collection
+    match /cropUpdates/{updateId} {
+      // Farmers can create updates and read their own updates
+      allow create: if hasRole("farmer");
+      allow read, delete: if hasRole("farmer") && resource.data.farmerId == request.auth.uid;
+      
+      // Employees can read all updates and update the status
+      allow read: if hasRole("employee");
+      allow update: if hasRole("employee") 
+        && (request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'feedback']));
+      
+      // Admins have full access
+      allow read, write: if hasRole("admin");
+    }
+    
+    // Allow easier development until the security model is fully implemented
+    // This will expire on May 22, 2025
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2025, 5, 22);
+    }
+  }
+}
