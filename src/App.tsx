@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,10 +13,10 @@ import NotFound from "./pages/NotFound";
 import FarmerDashboard from "./pages/FarmerDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import ChatBot from "./components/ChatBot";
 
 const queryClient = new QueryClient();
 
-// Define types for our user object
 interface UserData {
   uid: string;
   name: string;
@@ -46,7 +45,6 @@ const App = () => {
             ...userData
           });
         } else {
-          // Ensure all required properties of UserData are included
           setUser({ 
             uid: currentUser.uid, 
             email: currentUser.email || "",
@@ -102,6 +100,7 @@ const App = () => {
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          {user && <ChatBot />}
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
