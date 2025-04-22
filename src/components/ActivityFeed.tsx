@@ -26,8 +26,8 @@ const ActivityFeed = () => {
         const q = query(collection(db, "cropUpdates"), orderBy("timestamp", "desc"), limit(10));
         const querySnapshot = await getDocs(q);
         
-        const activityPromises = querySnapshot.docs.map(async (doc) => {
-          const data = doc.data();
+        const activityPromises = querySnapshot.docs.map(async (docSnapshot) => {
+          const data = docSnapshot.data();
           
           // Fetch farmer name
           let farmerName = "Unknown Farmer";
@@ -35,14 +35,15 @@ const ActivityFeed = () => {
             const userDocRef = doc(db, "users", data.farmerId);
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
-              farmerName = userDocSnap.data()?.name || "Unknown Farmer";
+              const userData = userDocSnap.data();
+              farmerName = userData?.name || "Unknown Farmer";
             }
           } catch (error) {
             console.error("Error fetching farmer name:", error);
           }
           
           return {
-            id: doc.id,
+            id: docSnapshot.id,
             type: data.type,
             stage: data.stage,
             status: data.status,

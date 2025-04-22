@@ -58,6 +58,7 @@ const SubmissionChart = ({ role, uid }: SubmissionChartProps) => {
           const data = doc.data() as DocumentData;
           submissions.push({
             ...data,
+            status: data.status || "pending", // Ensure status exists
             timestamp: data.timestamp instanceof Timestamp 
               ? data.timestamp.toDate() 
               : new Date(data.timestamp)

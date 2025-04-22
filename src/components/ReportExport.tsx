@@ -81,9 +81,11 @@ const ReportExport = ({ role, uid, userName }: ReportExportProps) => {
           
         results.push({
           id: doc.id,
-          ...data,
+          type: data.type || "Unknown",
+          stage: data.stage || "Unknown",
+          status: data.status || "pending",
           timestamp,
-          displayName: `${data.type} - ${data.stage} (${format(
+          displayName: `${data.type || "Unknown"} - ${data.stage || "Unknown"} (${format(
             timestamp,
             "MMM d, yyyy"
           )})`

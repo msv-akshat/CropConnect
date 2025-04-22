@@ -43,6 +43,7 @@ const App = () => {
             ...userDoc.data() as Omit<UserData, 'uid' | 'email'> 
           });
         } else {
+          // Fix: Ensure all required properties of UserData are included
           setUser({ 
             uid: currentUser.uid, 
             email: currentUser.email || "",
