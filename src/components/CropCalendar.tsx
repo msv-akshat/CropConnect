@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CalendarCheck, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +19,12 @@ interface CropEvent {
 interface CropCalendarProps {
   role: string;
   uid?: string;
+}
+
+interface CropDataType {
+  type: string;
+  plantedDate?: string;
+  expectedHarvestDate?: string;
 }
 
 const CropCalendar = ({ role, uid }: CropCalendarProps) => {
@@ -50,7 +56,7 @@ const CropCalendar = ({ role, uid }: CropCalendarProps) => {
         const fetchedEvents: CropEvent[] = [];
 
         querySnapshot.forEach((doc) => {
-          const data = doc.data();
+          const data = doc.data() as CropDataType;
 
           // Add planting date event if it exists
           if (data.plantedDate) {

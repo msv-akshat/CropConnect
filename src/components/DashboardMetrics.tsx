@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Progress } from "@/components/ui/progress";
 import { AreaChart, BarChart } from "lucide-react";
@@ -48,7 +48,7 @@ const DashboardMetrics = ({ role, uid }: DashboardMetricsProps) => {
         };
         
         querySnapshot.forEach((doc) => {
-          const data = doc.data();
+          const data = doc.data() as DocumentData;
           counts.total++;
           if (data.status === "pending") counts.pending++;
           if (data.status === "approved") counts.approved++;

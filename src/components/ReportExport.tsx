@@ -10,9 +10,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { FileText, FilePdf, Calendar as CalendarIcon, Printer } from "lucide-react";
+import { FileText, FileDown, Calendar as CalendarIcon, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,16 @@ interface ReportExportProps {
   userName?: string;
 }
 
+interface SubmissionData {
+  id: string;
+  type: string;
+  stage: string;
+  status: string;
+  timestamp: Date;
+  displayName: string;
+  [key: string]: any;
+}
+
 const ReportExport = ({ role, uid, userName }: ReportExportProps) => {
   const [reportType, setReportType] = useState<"submission" | "seasonal" | "certificate">("submission");
   const [startDate, setStartDate] = useState<Date | undefined>(
@@ -30,7 +40,7 @@ const ReportExport = ({ role, uid, userName }: ReportExportProps) => {
   );
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [selectedSubmission, setSelectedSubmission] = useState<string>("");
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -60,16 +70,25 @@ const ReportExport = ({ role, uid, userName }: ReportExportProps) => {
       }
       
       const querySnapshot = await getDocs(q);
-      const results = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        displayName: `${doc.data().type} - ${doc.data().stage} (${format(
-          doc.data().timestamp instanceof Timestamp 
-            ? doc.data().timestamp.toDate() 
-            : new Date(doc.data().timestamp),
-          "MMM d, yyyy"
-        )})`
-      }));
+      const results: SubmissionData[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as DocumentData;
+        
+        const timestamp = data.timestamp instanceof Timestamp 
+          ? data.timestamp.toDate() 
+          : new Date(data.timestamp);
+          
+        results.push({
+          id: doc.id,
+          ...data,
+          timestamp,
+          displayName: `${data.type} - ${data.stage} (${format(
+            timestamp,
+            "MMM d, yyyy"
+          )})`
+        });
+      });
       
       setSubmissions(results);
       
@@ -117,7 +136,7 @@ const ReportExport = ({ role, uid, userName }: ReportExportProps) => {
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center">
-          <FilePdf className="mr-2 h-5 w-5" />
+          <FileDown className="mr-2 h-5 w-5" />
           Report Export
         </CardTitle>
       </CardHeader>
@@ -238,7 +257,7 @@ const ReportExport = ({ role, uid, userName }: ReportExportProps) => {
                 disabled={isLoading || submissions.length === 0}
                 className="flex items-center gap-2"
               >
-                <FilePdf className="h-4 w-4" />
+                <FileDown className="h-4 w-4" />
                 {isLoading ? "Generating..." : "Export PDF"}
               </Button>
             )}

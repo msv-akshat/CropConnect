@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, Timestamp, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { 
   LineChart, 
@@ -28,6 +28,12 @@ interface ChartData {
   rejected: number;
 }
 
+interface SubmissionData {
+  status: string;
+  timestamp: Date;
+  [key: string]: any;
+}
+
 const SubmissionChart = ({ role, uid }: SubmissionChartProps) => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [chartType, setChartType] = useState<"line" | "bar">("line");
@@ -46,12 +52,17 @@ const SubmissionChart = ({ role, uid }: SubmissionChartProps) => {
         }
 
         const querySnapshot = await getDocs(q);
-        const submissions = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          timestamp: doc.data().timestamp instanceof Timestamp 
-            ? doc.data().timestamp.toDate() 
-            : new Date(doc.data().timestamp)
-        }));
+        const submissions: SubmissionData[] = [];
+        
+        querySnapshot.forEach(doc => {
+          const data = doc.data() as DocumentData;
+          submissions.push({
+            ...data,
+            timestamp: data.timestamp instanceof Timestamp 
+              ? data.timestamp.toDate() 
+              : new Date(data.timestamp)
+          });
+        });
         
         let processedData: ChartData[];
         

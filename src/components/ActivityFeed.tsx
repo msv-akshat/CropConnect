@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, limit, getDocs, Timestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Check, Clock, X } from "lucide-react";
 
@@ -32,9 +32,10 @@ const ActivityFeed = () => {
           // Fetch farmer name
           let farmerName = "Unknown Farmer";
           try {
-            const userDoc = await db.collection("users").doc(data.farmerId).get();
-            if (userDoc.exists) {
-              farmerName = userDoc.data()?.name || "Unknown Farmer";
+            const userDocRef = doc(db, "users", data.farmerId);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              farmerName = userDocSnap.data()?.name || "Unknown Farmer";
             }
           } catch (error) {
             console.error("Error fetching farmer name:", error);
