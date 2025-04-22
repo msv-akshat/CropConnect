@@ -1,121 +1,67 @@
 
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Filter, Search, Check, X, MessageCircle, Calendar, FileText, Settings } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { collection, query, where, getDocs, doc, updateDoc, Timestamp } from "firebase/firestore";
+import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { db, auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import DashboardMetrics from "@/components/DashboardMetrics";
-import SubmissionChart from "@/components/SubmissionChart";
-import ActivityFeed from "@/components/ActivityFeed";
-import CropCalendar from "@/components/CropCalendar";
-import Documentation from "@/components/Documentation";
-import ReportExport from "@/components/ReportExport";
+import HelpSupport from "@/components/user/HelpSupport";
+import AnnouncementsView from "@/components/user/AnnouncementsView";
 
-interface CropUpdate {
-  id: string;
-  farmerId: string;
-  farmerName?: string;
-  type: string;
-  stage: string;
-  quantity: number;
-  plantedDate: string;
-  expectedHarvestDate: string;
-  notes: string;
-  status: "pending" | "approved" | "rejected";
-  feedback?: string;
-  timestamp: Timestamp;
+interface EmployeeDashboardProps {
+  user: {
+    uid: string;
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
-interface User {
-  uid: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-interface FarmerDetails {
+interface Farmer {
   id: string;
   name: string;
   email: string;
+  region?: string;
 }
 
-const EmployeeDashboard = ({ user }: { user: User }) => {
+const EmployeeDashboard = ({ user }: EmployeeDashboardProps) => {
   const navigate = useNavigate();
-  const [pendingUpdates, setPendingUpdates] = useState<CropUpdate[]>([]);
-  const [approvedUpdates, setApprovedUpdates] = useState<CropUpdate[]>([]);
-  const [rejectedUpdates, setRejectedUpdates] = useState<CropUpdate[]>([]);
-  const [farmers, setFarmers] = useState<Record<string, FarmerDetails>>({});
-  const [selectedUpdate, setSelectedUpdate] = useState<CropUpdate | null>(null);
-  const [feedback, setFeedback] = useState("");
-  const [filterCropType, setFilterCropType] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  
+  const [assignedFarmers, setAssignedFarmers] = useState<Farmer[]>([]);
+
   useEffect(() => {
-    fetchUpdates();
-    fetchFarmers();
-  }, [user]);
-
-  const fetchFarmers = async () => {
-    try {
-      const q = query(collection(db, "users"), where("role", "==", "farmer"));
-      const querySnapshot = await getDocs(q);
-      const farmersMap: Record<string, FarmerDetails> = {};
-      
-      querySnapshot.forEach((doc) => {
-        const farmerData = doc.data() as FarmerDetails;
-        farmersMap[doc.id] = { id: doc.id, ...farmerData };
-      });
-      
-      setFarmers(farmersMap);
-    } catch (error) {
-      console.error("Error fetching farmers:", error);
-      toast.error("Failed to fetch farmer details");
-    }
-  };
-
-  const fetchUpdates = async () => {
-    try {
-      // Fetch pending updates
-      const pendingQ = query(collection(db, "cropUpdates"), where("status", "==", "pending"));
-      const pendingSnapshot = await getDocs(pendingQ);
-      const pendingData: CropUpdate[] = [];
-      pendingSnapshot.forEach((doc) => {
-        pendingData.push({ id: doc.id, ...doc.data() } as CropUpdate);
-      });
-      setPendingUpdates(pendingData);
-      
-      // Fetch approved updates
-      const approvedQ = query(collection(db, "cropUpdates"), where("status", "==", "approved"));
-      const approvedSnapshot = await getDocs(approvedQ);
-      const approvedData: CropUpdate[] = [];
-      approvedSnapshot.forEach((doc) => {
-        approvedData.push({ id: doc.id, ...doc.data() } as CropUpdate);
-      });
-      setApprovedUpdates(approvedData);
-      
-      // Fetch rejected updates
-      const rejectedQ = query(collection(db, "cropUpdates"), where("status", "==", "rejected"));
-      const rejectedSnapshot = await getDocs(rejectedQ);
-      const rejectedData: CropUpdate[] = [];
-      rejectedSnapshot.forEach((doc) => {
-        rejectedData.push({ id: doc.id, ...doc.data() } as CropUpdate);
-      });
-      setRejectedUpdates(rejectedData);
-      
-    } catch (error) {
-      console.error("Error fetching updates:", error);
-      toast.error("Failed to fetch updates");
-    }
-  };
+    const fetchAssignedFarmers = async () => {
+      try {
+        const q = query(
+          collection(db, "users"),
+          where("role", "==", "farmer"),
+          where("assignedTo", "==", user.uid)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const farmers: Farmer[] = [];
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          farmers.push({
+            id: doc.id,
+            name: data.name || "",
+            email: data.email || "",
+            region: data.region,
+          });
+        });
+        
+        setAssignedFarmers(farmers);
+      } catch (error) {
+        console.error("Error fetching assigned farmers:", error);
+        toast.error("Failed to load assigned farmers");
+      }
+    };
+    
+    fetchAssignedFarmers();
+  }, [user.uid]);
 
   const handleLogout = async () => {
     try {
@@ -128,55 +74,6 @@ const EmployeeDashboard = ({ user }: { user: User }) => {
     }
   };
 
-  const handleUpdateStatus = async (updateId: string, status: "approved" | "rejected") => {
-    try {
-      const updateRef = doc(db, "cropUpdates", updateId);
-      
-      const updateData: { status: string; feedback?: string } = { status };
-      if (feedback.trim() && status === "rejected") {
-        updateData.feedback = feedback;
-      }
-      
-      await updateDoc(updateRef, updateData);
-      toast.success(`Update ${status} successfully`);
-      setFeedback("");
-      setSelectedUpdate(null);
-      fetchUpdates();
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast.error("Failed to update status");
-    }
-  };
-
-  const getFarmerName = (farmerId: string) => {
-    return farmers[farmerId]?.name || "Unknown Farmer";
-  };
-
-  const formatDate = (timestamp: Timestamp) => {
-    if (!timestamp || !timestamp.toDate) {
-      return "N/A";
-    }
-    return timestamp.toDate().toLocaleDateString();
-  };
-
-  const filterUpdates = (updates: CropUpdate[]) => {
-    return updates
-      .filter(update => !filterCropType || update.type === filterCropType)
-      .filter(update => {
-        const farmerName = getFarmerName(update.farmerId).toLowerCase();
-        const searchLower = searchTerm.toLowerCase();
-        return update.type.toLowerCase().includes(searchLower) || 
-               farmerName.includes(searchLower) || 
-               update.stage.toLowerCase().includes(searchLower);
-      });
-  };
-
-  const getCropTypes = () => {
-    const allUpdates = [...pendingUpdates, ...approvedUpdates, ...rejectedUpdates];
-    const uniqueTypes = new Set(allUpdates.map(update => update.type));
-    return Array.from(uniqueTypes);
-  };
-
   return (
     <div className="min-h-screen bg-[#FFF8E7]">
       <div className="container mx-auto px-4 py-8">
@@ -184,7 +81,7 @@ const EmployeeDashboard = ({ user }: { user: User }) => {
           <Button 
             variant="ghost" 
             onClick={() => navigate('/')}
-            className="flex items-center"
+            className="mb-6"
           >
             <ArrowLeft className="mr-2" />
             Back to Home
@@ -200,467 +97,60 @@ const EmployeeDashboard = ({ user }: { user: User }) => {
         
         <h1 className="text-3xl font-bold mb-6">Welcome, {user.name}</h1>
         
-        {/* Dashboard Metrics */}
         <div className="mb-8">
-          <DashboardMetrics role="employee" />
+          <AnnouncementsView userRole={user.role} />
         </div>
         
-        <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList className="grid grid-cols-7 max-w-3xl mx-auto mb-4">
-            <TabsTrigger value="pending" className="flex items-center gap-2">
-              <MessageCircle size={16} />
-              Pending <span className="ml-1 bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">{pendingUpdates.length}</span>
-            </TabsTrigger>
-            <TabsTrigger value="approved" className="flex items-center gap-2">
-              <Check size={16} />
-              Approved
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex items-center gap-2">
-              <X size={16} />
-              Rejected
-            </TabsTrigger>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <FileText size={16} />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
-              <Calendar size={16} />
-              Calendar
-            </TabsTrigger>
-            <TabsTrigger value="docs" className="flex items-center gap-2">
-              <FileText size={16} />
-              Documentation
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings size={16} />
-              Settings
-            </TabsTrigger>
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="farmers">My Farmers</TabsTrigger>
+            <TabsTrigger value="verifications">Verifications</TabsTrigger>
+            <TabsTrigger value="support">Help & Support</TabsTrigger>
           </TabsList>
-
-          <div className="flex items-center mb-4 gap-4">
-            <div className="relative flex-grow">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by farmer, crop type..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter size={16} />
-              <select
-                className="p-2 rounded-md border"
-                value={filterCropType}
-                onChange={(e) => setFilterCropType(e.target.value)}
-              >
-                <option value="">All Crop Types</option>
-                {getCropTypes().map((type) => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
-          </div>
           
           <TabsContent value="dashboard">
-            <div className="grid gap-8">
-              <SubmissionChart role="employee" />
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h2 className="text-xl font-semibold mb-4">Employee Dashboard Content</h2>
+                <p>This is the employee dashboard content.</p>
+              </div>
               
-              <div className="grid md:grid-cols-5 gap-6">
-                <div className="md:col-span-3">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Recent Submissions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {pendingUpdates.length === 0 ? (
-                        <p className="text-center py-4">No pending submissions to review.</p>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Farmer</TableHead>
-                              <TableHead>Crop Type</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Submitted On</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pendingUpdates.slice(0, 5).map((update) => (
-                              <TableRow key={update.id}>
-                                <TableCell>{getFarmerName(update.farmerId)}</TableCell>
-                                <TableCell>{update.type}</TableCell>
-                                <TableCell>
-                                  <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Pending
-                                  </span>
-                                </TableCell>
-                                <TableCell>{formatDate(update.timestamp)}</TableCell>
-                                <TableCell>
-                                  <Button size="sm" variant="outline">Review</Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-                <div className="md:col-span-2">
-                  <ActivityFeed />
-                </div>
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h2 className="text-xl font-semibold mb-4">Statistics</h2>
+                <p>You have {assignedFarmers.length} assigned farmers.</p>
               </div>
             </div>
           </TabsContent>
           
-          <TabsContent value="pending">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Verifications</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {filterUpdates(pendingUpdates).length === 0 ? (
-                  <p className="text-center py-8">No pending verifications found.</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Farmer</TableHead>
-                        <TableHead>Crop Type</TableHead>
-                        <TableHead>Stage</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Submitted On</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filterUpdates(pendingUpdates).map((update) => (
-                        <TableRow key={update.id}>
-                          <TableCell>{getFarmerName(update.farmerId)}</TableCell>
-                          <TableCell>{update.type}</TableCell>
-                          <TableCell>{update.stage}</TableCell>
-                          <TableCell>{update.quantity} acres</TableCell>
-                          <TableCell>{formatDate(update.timestamp)}</TableCell>
-                          <TableCell>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm">Review</Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-xl">
-                                <DialogHeader>
-                                  <DialogTitle>Review Crop Update</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Farmer</p>
-                                      <p>{getFarmerName(update.farmerId)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Submitted On</p>
-                                      <p>{formatDate(update.timestamp)}</p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Crop Type</p>
-                                      <p>{update.type}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Growth Stage</p>
-                                      <p>{update.stage}</p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Quantity</p>
-                                      <p>{update.quantity} acres</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Planted Date</p>
-                                      <p>{update.plantedDate || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Expected Harvest</p>
-                                      <p>{update.expectedHarvestDate || "N/A"}</p>
-                                    </div>
-                                  </div>
-
-                                  {update.notes && (
-                                    <div>
-                                      <p className="text-sm font-medium">Farmer's Notes</p>
-                                      <p className="bg-gray-50 p-3 rounded">{update.notes}</p>
-                                    </div>
-                                  )}
-                                  
-                                  <div>
-                                    <p className="text-sm font-medium mb-1">Feedback (required for rejection)</p>
-                                    <Textarea 
-                                      placeholder="Add your feedback here..."
-                                      value={feedback}
-                                      onChange={(e) => setFeedback(e.target.value)}
-                                    />
-                                  </div>
-                                </div>
-                                <DialogFooter className="gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    onClick={() => handleUpdateStatus(update.id, "rejected")}
-                                    className="flex items-center"
-                                  >
-                                    <X className="mr-2 h-4 w-4" />
-                                    Reject
-                                  </Button>
-                                  <Button 
-                                    onClick={() => handleUpdateStatus(update.id, "approved")}
-                                    className="flex items-center"
-                                  >
-                                    <Check className="mr-2 h-4 w-4" />
-                                    Approve
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="approved">
-            <Card>
-              <CardHeader>
-                <CardTitle>Approved Submissions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {filterUpdates(approvedUpdates).length === 0 ? (
-                  <p className="text-center py-8">No approved submissions found.</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Farmer</TableHead>
-                        <TableHead>Crop Type</TableHead>
-                        <TableHead>Stage</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Approved On</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filterUpdates(approvedUpdates).map((update) => (
-                        <TableRow key={update.id}>
-                          <TableCell>{getFarmerName(update.farmerId)}</TableCell>
-                          <TableCell>{update.type}</TableCell>
-                          <TableCell>{update.stage}</TableCell>
-                          <TableCell>{update.quantity} acres</TableCell>
-                          <TableCell>{formatDate(update.timestamp)}</TableCell>
-                          <TableCell>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm" variant="outline">View</Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Approved Crop Update</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Farmer</p>
-                                      <p>{getFarmerName(update.farmerId)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Submitted On</p>
-                                      <p>{formatDate(update.timestamp)}</p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Crop Type</p>
-                                      <p>{update.type}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Growth Stage</p>
-                                      <p>{update.stage}</p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Quantity</p>
-                                      <p>{update.quantity} acres</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Planted Date</p>
-                                      <p>{update.plantedDate || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Expected Harvest</p>
-                                      <p>{update.expectedHarvestDate || "N/A"}</p>
-                                    </div>
-                                  </div>
-
-                                  {update.notes && (
-                                    <div>
-                                      <p className="text-sm font-medium">Farmer's Notes</p>
-                                      <p className="bg-gray-50 p-3 rounded">{update.notes}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="rejected">
-            <Card>
-              <CardHeader>
-                <CardTitle>Rejected Submissions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {filterUpdates(rejectedUpdates).length === 0 ? (
-                  <p className="text-center py-8">No rejected submissions found.</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Farmer</TableHead>
-                        <TableHead>Crop Type</TableHead>
-                        <TableHead>Stage</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Rejected On</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filterUpdates(rejectedUpdates).map((update) => (
-                        <TableRow key={update.id}>
-                          <TableCell>{getFarmerName(update.farmerId)}</TableCell>
-                          <TableCell>{update.type}</TableCell>
-                          <TableCell>{update.stage}</TableCell>
-                          <TableCell>{update.quantity} acres</TableCell>
-                          <TableCell>{formatDate(update.timestamp)}</TableCell>
-                          <TableCell>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm" variant="outline">View</Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Rejected Crop Update</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Farmer</p>
-                                      <p>{getFarmerName(update.farmerId)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Submitted On</p>
-                                      <p>{formatDate(update.timestamp)}</p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Crop Type</p>
-                                      <p>{update.type}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Growth Stage</p>
-                                      <p>{update.stage}</p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Quantity</p>
-                                      <p>{update.quantity} acres</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Planted Date</p>
-                                      <p>{update.plantedDate || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Expected Harvest</p>
-                                      <p>{update.expectedHarvestDate || "N/A"}</p>
-                                    </div>
-                                  </div>
-
-                                  {update.notes && (
-                                    <div>
-                                      <p className="text-sm font-medium">Farmer's Notes</p>
-                                      <p className="bg-gray-50 p-3 rounded">{update.notes}</p>
-                                    </div>
-                                  )}
-                                  
-                                  {update.feedback && (
-                                    <div>
-                                      <p className="text-sm font-medium">Feedback</p>
-                                      <p className="bg-red-50 text-red-800 p-3 rounded">{update.feedback}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="calendar">
-            <div className="grid gap-6">
-              <CropCalendar role="employee" />
+          <TabsContent value="farmers">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-xl font-semibold mb-4">My Assigned Farmers</h2>
+              {assignedFarmers.length > 0 ? (
+                <ul className="space-y-2">
+                  {assignedFarmers.map(farmer => (
+                    <li key={farmer.id} className="p-3 bg-gray-50 rounded">
+                      <div className="font-medium">{farmer.name}</div>
+                      <div className="text-sm text-gray-600">{farmer.email}</div>
+                      {farmer.region && <div className="text-xs text-gray-500">Region: {farmer.region}</div>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>You have no farmers assigned to you yet.</p>
+              )}
             </div>
           </TabsContent>
           
-          <TabsContent value="docs">
-            <div className="grid gap-6">
-              <Documentation />
+          <TabsContent value="verifications">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-xl font-semibold mb-4">Pending Verifications</h2>
+              <p>Crop update verifications will appear here.</p>
             </div>
           </TabsContent>
           
-          <TabsContent value="settings">
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="font-medium">Profile Information</h3>
-                    <p className="text-sm text-gray-600">Name: {user.name}</p>
-                    <p className="text-sm text-gray-600">Email: {user.email}</p>
-                    <p className="text-sm text-gray-600">Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
-                  </div>
-                  <Button onClick={handleLogout} variant="outline">Logout</Button>
-                </CardContent>
-              </Card>
-              
-              <ReportExport role="employee" userName={user.name} />
-            </div>
+          <TabsContent value="support">
+            <HelpSupport user={user} />
           </TabsContent>
         </Tabs>
       </div>
