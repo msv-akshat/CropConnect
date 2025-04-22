@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, Settings, Megaphone, LifeBuoy } from "lucide-react";
+import { ArrowLeft, Users, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { collection, getDocs, query } from "firebase/firestore";
@@ -14,15 +14,20 @@ import ActivityFeed from "@/components/ActivityFeed";
 import CropCalendar from "@/components/CropCalendar";
 import Documentation from "@/components/Documentation";
 import ReportExport from "@/components/ReportExport";
-import UserManagement from "@/components/admin/UserManagement";
-import Announcements from "@/components/admin/Announcements";
-import SupportTickets from "@/components/admin/SupportTickets";
 
 interface SystemStats {
   totalUsers: number;
   pendingVerifications: number;
   totalApproved: number;
   totalRejected: number;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: Date;
 }
 
 const AdminDashboard = ({ user }: { user: { uid: string; name: string; email: string; role: string } }) => {
@@ -33,9 +38,11 @@ const AdminDashboard = ({ user }: { user: { uid: string; name: string; email: st
     totalApproved: 0,
     totalRejected: 0,
   });
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     fetchSystemStats();
+    fetchUsers();
   }, []);
 
   const fetchSystemStats = async () => {
@@ -65,6 +72,30 @@ const AdminDashboard = ({ user }: { user: { uid: string; name: string; email: st
     } catch (error) {
       console.error("Error fetching system stats:", error);
       toast.error("Failed to fetch system statistics");
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const q = query(collection(db, "users"));
+      const querySnapshot = await getDocs(q);
+      const usersData: User[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        usersData.push({
+          id: doc.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          createdAt: userData.createdAt?.toDate() || new Date(),
+        });
+      });
+      
+      setUsers(usersData);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users");
     }
   };
 
@@ -108,7 +139,7 @@ const AdminDashboard = ({ user }: { user: { uid: string; name: string; email: st
         </div>
         
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-6 max-w-3xl mx-auto mb-4">
+          <TabsList className="grid grid-cols-5 max-w-2xl mx-auto mb-4">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Settings size={16} />
               System Overview
@@ -117,21 +148,17 @@ const AdminDashboard = ({ user }: { user: { uid: string; name: string; email: st
               <Users size={16} />
               Users
             </TabsTrigger>
-            <TabsTrigger value="announcements" className="flex items-center gap-2">
-              <Megaphone size={16} />
-              Announcements
-            </TabsTrigger>
-            <TabsTrigger value="support" className="flex items-center gap-2">
-              <LifeBuoy size={16} />
-              Support
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <Settings size={16} />
+              Reports
             </TabsTrigger>
             <TabsTrigger value="calendar" className="flex items-center gap-2">
               <Settings size={16} />
               Calendar
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2">
+            <TabsTrigger value="docs" className="flex items-center gap-2">
               <Settings size={16} />
-              Reports
+              Documentation
             </TabsTrigger>
           </TabsList>
           
@@ -172,23 +199,51 @@ const AdminDashboard = ({ user }: { user: { uid: string; name: string; email: st
           </TabsContent>
           
           <TabsContent value="users">
-            <UserManagement />
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-xl font-semibold mb-4">Users Management</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="p-3 text-left">Name</th>
+                      <th className="p-3 text-left">Email</th>
+                      <th className="p-3 text-left">Role</th>
+                      <th className="p-3 text-left">Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(user => (
+                      <tr key={user.id} className="border-t">
+                        <td className="p-3">{user.name}</td>
+                        <td className="p-3">{user.email}</td>
+                        <td className="p-3">
+                          <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                            user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                            user.role === 'employee' ? 'bg-blue-100 text-blue-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </span>
+                        </td>
+                        <td className="p-3">{user.createdAt.toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </TabsContent>
           
-          <TabsContent value="announcements">
-            <Announcements />
-          </TabsContent>
-          
-          <TabsContent value="support">
-            <SupportTickets />
+          <TabsContent value="reports">
+            <ReportExport role="admin" userName={user.name} />
           </TabsContent>
           
           <TabsContent value="calendar">
             <CropCalendar role="admin" />
           </TabsContent>
           
-          <TabsContent value="reports">
-            <ReportExport role="admin" userName={user.name} />
+          <TabsContent value="docs">
+            <Documentation />
           </TabsContent>
         </Tabs>
       </div>
