@@ -39,9 +39,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-[#FFF8E7]">
       <Hero />
-      <div className="container mx-auto px-4 py-12">
-        <div className="flex justify-center mb-8">
-          <Button onClick={() => navigate('/login')} className="flex items-center gap-2">
+      <div className="container mx-auto px-4 pt-4 py-12">
+        <div className="flex justify-center mb-2">
+          <Button onClick={() => navigate('/login')} className="flex items-center gap-2 ">
             <LogIn size={18} />
             Login / Register
           </Button>
