@@ -9,10 +9,16 @@ import { db, auth } from "@/lib/firebase";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import DashboardMetrics from "@/components/DashboardMetrics";
+import SubmissionChart from "@/components/SubmissionChart";
+import ActivityFeed from "@/components/ActivityFeed";
+import CropCalendar from "@/components/CropCalendar";
+import Documentation from "@/components/Documentation";
+import ReportExport from "@/components/ReportExport";
 
 interface CropUpdate {
   id: string;
@@ -194,8 +200,13 @@ const EmployeeDashboard = ({ user }: { user: User }) => {
         
         <h1 className="text-3xl font-bold mb-6">Welcome, {user.name}</h1>
         
+        {/* Dashboard Metrics */}
+        <div className="mb-8">
+          <DashboardMetrics role="employee" />
+        </div>
+        
         <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList className="grid grid-cols-5 max-w-2xl mx-auto mb-4">
+          <TabsList className="grid grid-cols-7 max-w-3xl mx-auto mb-4">
             <TabsTrigger value="pending" className="flex items-center gap-2">
               <MessageCircle size={16} />
               Pending <span className="ml-1 bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">{pendingUpdates.length}</span>
@@ -208,9 +219,17 @@ const EmployeeDashboard = ({ user }: { user: User }) => {
               <X size={16} />
               Rejected
             </TabsTrigger>
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <FileText size={16} />
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger value="calendar" className="flex items-center gap-2">
               <Calendar size={16} />
               Calendar
+            </TabsTrigger>
+            <TabsTrigger value="docs" className="flex items-center gap-2">
+              <FileText size={16} />
+              Documentation
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings size={16} />
@@ -242,6 +261,59 @@ const EmployeeDashboard = ({ user }: { user: User }) => {
               </select>
             </div>
           </div>
+          
+          <TabsContent value="dashboard">
+            <div className="grid gap-8">
+              <SubmissionChart role="employee" />
+              
+              <div className="grid md:grid-cols-5 gap-6">
+                <div className="md:col-span-3">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Submissions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {pendingUpdates.length === 0 ? (
+                        <p className="text-center py-4">No pending submissions to review.</p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Farmer</TableHead>
+                              <TableHead>Crop Type</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Submitted On</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {pendingUpdates.slice(0, 5).map((update) => (
+                              <TableRow key={update.id}>
+                                <TableCell>{getFarmerName(update.farmerId)}</TableCell>
+                                <TableCell>{update.type}</TableCell>
+                                <TableCell>
+                                  <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Pending
+                                  </span>
+                                </TableCell>
+                                <TableCell>{formatDate(update.timestamp)}</TableCell>
+                                <TableCell>
+                                  <Button size="sm" variant="outline">Review</Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="md:col-span-2">
+                  <ActivityFeed />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
           
           <TabsContent value="pending">
             <Card>
@@ -559,32 +631,36 @@ const EmployeeDashboard = ({ user }: { user: User }) => {
           </TabsContent>
           
           <TabsContent value="calendar">
-            <Card>
-              <CardHeader>
-                <CardTitle>Harvest Calendar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>This is where the calendar view of expected harvests would be displayed.</p>
-                <p className="text-muted-foreground mt-2">Coming soon: Visual calendar showing upcoming harvests.</p>
-              </CardContent>
-            </Card>
+            <div className="grid gap-6">
+              <CropCalendar role="employee" />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="docs">
+            <div className="grid gap-6">
+              <Documentation />
+            </div>
           </TabsContent>
           
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="font-medium">Profile Information</h3>
-                  <p className="text-sm text-gray-600">Name: {user.name}</p>
-                  <p className="text-sm text-gray-600">Email: {user.email}</p>
-                  <p className="text-sm text-gray-600">Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
-                </div>
-                <Button onClick={handleLogout} variant="outline">Logout</Button>
-              </CardContent>
-            </Card>
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Account Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h3 className="font-medium">Profile Information</h3>
+                    <p className="text-sm text-gray-600">Name: {user.name}</p>
+                    <p className="text-sm text-gray-600">Email: {user.email}</p>
+                    <p className="text-sm text-gray-600">Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
+                  </div>
+                  <Button onClick={handleLogout} variant="outline">Logout</Button>
+                </CardContent>
+              </Card>
+              
+              <ReportExport role="employee" userName={user.name} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

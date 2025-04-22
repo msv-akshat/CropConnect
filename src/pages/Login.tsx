@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import Hero from "@/components/Hero";
+import { InfoIcon } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -22,9 +23,6 @@ const loginSchema = z.object({
 
 const registerSchema = loginSchema.extend({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  role: z.enum(["farmer", "employee", "admin"], {
-    required_error: "Please select a role",
-  }),
 });
 
 const Login = () => {
@@ -45,7 +43,6 @@ const Login = () => {
       name: "",
       email: "",
       password: "",
-      role: "farmer",
     },
   });
 
@@ -86,24 +83,16 @@ const Login = () => {
       setIsLoading(true);
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       
-      // Store user data in Firestore
+      // Store user data in Firestore with farmer role
       await setDoc(doc(db, "users", userCredential.user.uid), {
         name: data.name,
         email: data.email,
-        role: data.role,
+        role: "farmer",
         createdAt: new Date(),
       });
       
       toast.success("Account created successfully!");
-      
-      // Redirect based on role
-      if (data.role === "farmer") {
-        navigate("/farmer");
-      } else if (data.role === "employee") {
-        navigate("/employee");
-      } else if (data.role === "admin") {
-        navigate("/admin");
-      }
+      navigate("/farmer");
     } catch (error) {
       console.error("Error registering:", error);
       toast.error("Failed to register. Please try again.");
@@ -165,6 +154,14 @@ const Login = () => {
               <TabsContent value="register">
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                      <div className="flex items-start">
+                        <InfoIcon className="h-5 w-5 text-blue-500 mr-2 mt-0.5" />
+                        <p className="text-sm text-blue-700">
+                          Only farmers can create new accounts. Employee and admin accounts are managed by the system administrator.
+                        </p>
+                      </div>
+                    </div>
                     <FormField
                       control={registerForm.control}
                       name="name"
@@ -204,28 +201,8 @@ const Login = () => {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={registerForm.control}
-                      name="role"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Role</FormLabel>
-                          <FormControl>
-                            <select
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                              {...field}
-                            >
-                              <option value="farmer">Farmer</option>
-                              <option value="employee">Employee</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Registering..." : "Register"}
+                      {isLoading ? "Registering..." : "Register as Farmer"}
                     </Button>
                   </form>
                 </Form>
