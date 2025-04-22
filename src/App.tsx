@@ -37,18 +37,21 @@ const App = () => {
         const userDoc = await getDoc(userDocRef);
         
         if (userDoc.exists()) {
+          const userData = userDoc.data();
           setUser({ 
             uid: currentUser.uid, 
             email: currentUser.email || "", 
-            ...userDoc.data() as Omit<UserData, 'uid' | 'email'> 
+            name: userData.name || currentUser.displayName || "",
+            role: userData.role || "",
+            ...userData
           });
         } else {
-          // Fix: Ensure all required properties of UserData are included
+          // Ensure all required properties of UserData are included
           setUser({ 
             uid: currentUser.uid, 
             email: currentUser.email || "",
             name: currentUser.displayName || "",
-            role: "" 
+            role: ""  // Default empty role if no user document exists
           });
         }
       } else {
