@@ -58,8 +58,18 @@ node server.js
 
 ## 📸 Screenshots
 
-> Add some screenshots here like:
+- Home page
+  ![image](https://github.com/user-attachments/assets/4f5dbc36-5e65-4b8a-a546-7e600c1a5514)
+
 - Login page
+  ![image](https://github.com/user-attachments/assets/d367f3b8-0dd1-48ef-9790-1a9966f1a1fc)
+
+- Farmer register form
+  ![image](https://github.com/user-attachments/assets/5f23bdd0-82d8-49a6-8268-ab8d109868b8)
+
 - Excel upload interface
-- Admin approval panel
+  ![image](https://github.com/user-attachments/assets/12f1bba4-2b81-4a07-8035-90450d2cdc99)
+
 - Filter & download screen
+  ![image](https://github.com/user-attachments/assets/6b65579b-b1c8-44b6-b0bb-edbb273eb761)
+
