@@ -18,7 +18,7 @@ A full-stack application to manage farmer data, built using React, Node.js, and 
 
 ## 📦 Setup Instructions
 ```bash
-git clone https://github.com/msv-akshat/crop-connect-farmer-app
+git clone https://github.com/msv-akshat/CropConnect
 cd crop-connect-farmer-app
 npm install
 npm run dev
